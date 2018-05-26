@@ -37,6 +37,7 @@
   "dependencies": {
     "@types/three": "latest",
     "three": "latest",
-    "stats.js":"latest"
+    "stats.js":"latest",
+    "dat.gui": "latest"
   }
 }

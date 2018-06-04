@@ -18,6 +18,7 @@ var inflight_memos = [];
 var slab_points;
 var memo_points;
 var PARTICLE_SIZE = 200;
+var frame = 0;
 
 var memo_uniforms;
 
@@ -86,7 +87,6 @@ function animate() {
     stats.update();
 }
 
-var frame = 0;
 function render() {
     // particles.rotation.x += 0.0005;
     // particles.rotation.y += 0.001;

@@ -3,18 +3,16 @@ import * as THREE from "three";
 import {BufferGeometry, Scene, Points, Float32BufferAttribute} from "three";
 import * as DiscImage from './textures/sprites/disc.png';
 
-var slab_increment = 0;
-var all_slabs = [];
 var NEIGHBOR_COUNT = 5;
 
 export class Slab {
-    id: Number;
+    id: number;
     public x: number;
     public y: number;
     public z: number;
     neighbors: Array<Slab>;
-    constructor(){
-        this.id = slab_increment++;
+    constructor(slabset: SlabSet, id: number){
+        this.id = id;
 
         this.x = 2000 * Math.random() - 1000;
         this.y = 2000 * Math.random() - 1000;
@@ -22,9 +20,9 @@ export class Slab {
 
         this.neighbors = [];
 
-        if ( all_slabs.length > 0 ){
+        if ( slabset.slabs.length > 0 ){
             for ( var i = 0; i < NEIGHBOR_COUNT; i ++ ) {
-                var neighbor = all_slabs[Math.floor(Math.random() * all_slabs.length )];
+                var neighbor = slabset.slabs[Math.floor(Math.random() * slabset.slabs.length )];
                 if (neighbor && this.neighbors.indexOf(neighbor) == -1) {
                     this.neighbors.push(neighbor);
                 }
@@ -37,14 +35,14 @@ export class Slab {
     }
 }
 class SlabUniforms{
-    time: Number;
+    ticks: Object;
     color: Object;
     texture: Object;
     constructor() {
         {
             var sprite = new THREE.TextureLoader().load( DiscImage );
 
-            this.time = 0;
+            this.ticks = { value: 0 };
             this.color = { value: new THREE.Color( 0xffffff ) };
             this.texture = { value: sprite };
         }
@@ -60,7 +58,7 @@ export class SlabSet {
         this.geometry = new THREE.BufferGeometry();
         this.geometry.addAttribute( 'position',    new THREE.Float32BufferAttribute( new Float32Array(10 * 3), 3 ) );
         // slab_geometry.addAttribute( 'customColor', new THREE.Float32BufferAttribute( colors, 3 ) );
-        this.geometry.addAttribute( 'size',        new THREE.Float32BufferAttribute( new Float32Array( 10 * 1), 1 ) );
+        this.geometry.addAttribute( 'last_memo_time', new THREE.Float32BufferAttribute( new Float32Array( 10 * 1), 1 ) );
 
         this.uniforms = new SlabUniforms();
         this.slabs = [];
@@ -78,7 +76,7 @@ export class SlabSet {
 
     create_random_slabs( count: number ) {
         for (var i = 0; i < count; i++) {
-            var slab = new Slab();
+            var slab = new Slab(this, i);
             this.slabs.push(slab);
         }
         this.update_attributes();
@@ -87,18 +85,17 @@ export class SlabSet {
         var attributes = this.points.geometry;
 
         var position = <Float32BufferAttribute> this.geometry.getAttribute('position');
-        var size     = <Float32BufferAttribute> this.geometry.getAttribute('size');
 
         for ( var i = 0, l = this.slabs.length; i < l; i ++ ) {
             var slab = this.slabs[i];
             position.setXYZ(i, slab.x, slab.y, slab.z);
-            console.log('setXYZ');
-            size.setX(i,200); //Math.max( PARTICLE_SIZE, attributes.size.array[i] * .99 );
+            // console.log('setXYZ');
+            // size.setX(i,200); //Math.max( PARTICLE_SIZE, attributes.size.array[i] * .99 );
         }
 
         console.log(position.array.length);
         position.needsUpdate = true;
-        size.needsUpdate = true;
+        // size.needsUpdate = true;
 
     }
     update (time: number){
@@ -117,16 +114,29 @@ export class SlabSet {
         //     // color.toArray( colors, slab.id * 3 );
         // }
 
+        var uniforms : any = this.uniforms;
+        uniforms.ticks.value = time;
 
-        this.uniforms.time = time;
-
-
-        // if (frame % 10 == 0) {
-        //     send_memos();
-        // }
+        if (time % 10 == 0) {
+            this.send_memos(time);
+        }
 
     }
+    send_memos(time){
 
+        var last_memo_time = <Float32BufferAttribute> this.geometry.getAttribute('last_memo_time');
+
+        for (let slab of this.slabs){
+            let number = (Math.random() * this.slabs.length);
+            if (number < 0.5 ) {
+                //inflight_memos.push(slab.send_memo())
+                //slab_attributes.size.array[slab.id] = PARTICLE_SIZE * 2;
+                console.log('pulse', slab.id, time);
+                last_memo_time.setX(slab.id, time);
+            }
+        }
+        last_memo_time.needsUpdate = true;
+    }
 
         //
         // var memo_geometry = new THREE.BufferGeometry();
@@ -138,15 +148,5 @@ export class SlabSet {
         //
 
 
-    // function send_memos(){
-    //     var slab_geometry = slab_points.geometry;
-    //     var slab_attributes = slab_geometry.attributes;
-    //     for (let slab of slabs){
-    //         let number = (Math.random() * PARTICLE_COUNT);
-    //         if (number < 0.5 ) {
-    //             inflight_memos.push(slab.send_memo())
-    //             slab_attributes.size.array[slab.id] = PARTICLE_SIZE * 2;
-    //         }
-    //     }
-    // }
+
 }

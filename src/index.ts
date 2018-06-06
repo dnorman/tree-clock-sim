@@ -4,7 +4,6 @@ import * as THREE from 'three'
 import * as Stats from 'stats.js'
 import * as dat from 'dat.gui'
 import {Slab,SlabSet} from "./slab";
-import Memo from './memo'
 
 var camera, scene, renderer, stats, material;
 var mouseX = 0, mouseY = 0;
@@ -14,13 +13,7 @@ var windowHalfY = window.innerHeight / 2;
 var SLAB_COUNT = 10;
 
 var slabset;
-var inflight_memos = [];
-var slab_points;
-var memo_points;
-var PARTICLE_SIZE = 200;
 var frame = 0;
-
-var memo_uniforms;
 
 init();
 animate();

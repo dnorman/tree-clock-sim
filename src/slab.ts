@@ -1,4 +1,4 @@
-import Memo from './memo'
+import {Memo,MemoSet} from './memo'
 import * as THREE from "three";
 import {BufferGeometry, Scene, Points, Float32BufferAttribute} from "three";
 import * as DiscImage from './textures/sprites/disc.png';
@@ -29,20 +29,20 @@ export class Slab {
             }
         }
     }
-    send_memo() : Memo{
-        var neighbor = this.neighbors[Math.floor(Math.random() * this.neighbors.length )];
-        return new Memo( this, neighbor )
+    select_peer(){
+        var peer = this.neighbors[Math.floor(Math.random() * this.neighbors.length )];
+        return peer;
     }
 }
 class SlabUniforms{
-    ticks: Object;
+    time: Object;
     color: Object;
     texture: Object;
     constructor() {
         {
             var sprite = new THREE.TextureLoader().load( DiscImage );
 
-            this.ticks = { value: 0 };
+            this.time = { value: 0 };
             this.color = { value: new THREE.Color( 0xffffff ) };
             this.texture = { value: sprite };
         }
@@ -54,6 +54,7 @@ export class SlabSet {
     geometry: BufferGeometry;
     uniforms: SlabUniforms;
     points: Points;
+    memoset: MemoSet;
     constructor(scene: Scene){
         this.geometry = new THREE.BufferGeometry();
         this.geometry.addAttribute( 'position',    new THREE.Float32BufferAttribute( new Float32Array(10 * 3), 3 ) );
@@ -72,6 +73,8 @@ export class SlabSet {
 
         this.points = new THREE.Points( this.geometry, material );
         scene.add( this.points );
+
+        this.memoset = new MemoSet(scene);
     }
 
     create_random_slabs( count: number ) {
@@ -115,7 +118,7 @@ export class SlabSet {
         // }
 
         var uniforms : any = this.uniforms;
-        uniforms.ticks.value = time;
+        uniforms.time.value = time;
 
         if (time % 10 == 0) {
             this.send_memos(time);
@@ -125,14 +128,17 @@ export class SlabSet {
     send_memos(time){
 
         var last_memo_time = <Float32BufferAttribute> this.geometry.getAttribute('last_memo_time');
-
+        var other_slab;
         for (let slab of this.slabs){
             let number = (Math.random() * this.slabs.length);
             if (number < 0.5 ) {
                 //inflight_memos.push(slab.send_memo())
                 //slab_attributes.size.array[slab.id] = PARTICLE_SIZE * 2;
-                console.log('pulse', slab.id, time);
-                last_memo_time.setX(slab.id, time);
+                other_slab = slab.select_peer();
+                if (other_slab) {
+                    last_memo_time.setX(slab.id, time);
+                    this.memoset.send_memo(slab, other_slab,time);
+                }
             }
         }
         last_memo_time.needsUpdate = true;

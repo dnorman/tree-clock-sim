@@ -6,7 +6,7 @@
     <title>Three.js Starter</title>
 
     <script type="x-shader/x-vertex" id="slab_vertexshader">
-            uniform float ticks;
+            uniform float time;
 			attribute float last_memo_time;
 			//attribute vec3 customColor;
 			//varying vec3 vColor;
@@ -20,22 +20,30 @@
 			void main() {
 				//vColor = customColor;
 				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-				float size = 200.0 + (200.0 * cubicPulse(0.5,0.5,smoothstep(-50.0,50.0, ticks - last_memo_time)));
+				float size = 200.0 + (200.0 * cubicPulse(0.5,0.5,smoothstep(-50.0,50.0, time - last_memo_time)));
 				gl_PointSize = size * ( 300.0 / -mvPosition.z );
 				gl_Position = projectionMatrix * mvPosition;
 			}
 	</script>
     <script type="x-shader/x-vertex" id="memo_vertexshader">
-			attribute float size;
-			attribute vec3 customColor;
+            uniform float time;
+			//attribute float size;
+			//attribute vec3 customColor;
+			attribute vec3 source;
 			attribute vec3 destination;
-			attribute float progress;
+			attribute float emit_time;
+			attribute float duration;
 
-			varying vec3 vColor;
+			//varying vec3 vColor;
 			void main() {
-				vColor = customColor;
-				vec4 mvPosition = modelViewMatrix * vec4( mix(position, destination, progress), 1.0 );
-				gl_PointSize = size * ( 300.0 / -mvPosition.z );
+			    //if ( time >= emit_time + duration ) {
+			    //    gl_Position = vec4(0.0);
+			    //    return;
+			    //}
+				//vColor = customColor;
+				vec4 mvPosition = modelViewMatrix * vec4( source, 1.0); //mix(source, destination,  duration / (time - emit_time)), 1.0 );
+				gl_PointSize = 500.0 * ( 300.0 / -mvPosition.z );
+
 				gl_Position = projectionMatrix * mvPosition;
 			}
 	</script>

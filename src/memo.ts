@@ -42,8 +42,10 @@ export class MemoSet {
     points: Points;
     pool_size: number;
     constructor(scene: Scene) {
+        this.pool_size = 1000;
+
         this.geometry = new THREE.BufferGeometry();
-        this.geometry.addAttribute('source',      new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 3), 3));
+        this.geometry.addAttribute('position',      new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 3), 3));
         this.geometry.addAttribute('destination', new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 3), 3));
 
         // slab_geometry.addAttribute( 'customColor', new THREE.Float32BufferAttribute( colors, 3 ) );
@@ -52,7 +54,6 @@ export class MemoSet {
 
         this.uniforms = new MemoUniforms();
         this.memos = [];
-        this.pool_size = 10;
 
         var material = new THREE.ShaderMaterial({
             uniforms: this.uniforms,
@@ -62,13 +63,14 @@ export class MemoSet {
         });
 
         this.points = new THREE.Points(this.geometry, material);
+        this.points.frustumCulled = false;
         scene.add(this.points);
     }
     update_attributes(){
         var attributes = this.points.geometry;
 
 
-        var source      = <Float32BufferAttribute> this.geometry.getAttribute('source');
+        var position      = <Float32BufferAttribute> this.geometry.getAttribute('position');
         var destination = <Float32BufferAttribute> this.geometry.getAttribute('destination');
         var emit_time   = <Float32BufferAttribute> this.geometry.getAttribute('emit_time');
         var duration    = <Float32BufferAttribute> this.geometry.getAttribute('duration');
@@ -79,12 +81,11 @@ export class MemoSet {
         for ( var i = 0, l = this.pool_size; i < l; i ++ ) {
             var memo = this.memos[i];
             if (!memo) continue;
-            console.log("MEOW", i, this.pool_size);
 
             from_slab = memo.from_slab;
             to_slab   = memo.to_slab;
             //console.log("MEOW", from_slab.x, to_slab.x, memo.emit_time, memo.distance);
-            source.setXYZ(i, from_slab.x, from_slab.y, from_slab.z);
+            position.setXYZ(i, from_slab.x, from_slab.y, from_slab.z);
             destination.setXYZ(i, to_slab.x, to_slab.y, to_slab.z);
             emit_time.setX(i, memo.emit_time );
             duration.setX(i, Math.floor(memo.distance) );
@@ -92,13 +93,16 @@ export class MemoSet {
             // console.log('setXYZ');
             // size.setX(i,200); //Math.max( PARTICLE_SIZE, attributes.size.array[i] * .99 );
         }
-
-        console.log(source.array.length);
-        source.needsUpdate = true;
+        
+        position.needsUpdate = true;
         destination.needsUpdate = true;
         emit_time.needsUpdate = true;
         duration.needsUpdate = true;
 
+    }
+    update (time: number) {
+        var uniforms: any = this.uniforms;
+        uniforms.time.value = time;
     }
     send_memo(from_slab: Slab, to_slab: Slab, emit_time: number){
         var memo = new Memo(from_slab, to_slab, emit_time);

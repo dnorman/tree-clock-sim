@@ -124,6 +124,7 @@ export class SlabSet {
             this.send_memos(time);
         }
 
+        this.memoset.update(time);
     }
     send_memos(time){
 

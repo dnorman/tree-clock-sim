@@ -29,7 +29,7 @@
             uniform float time;
 			//attribute float size;
 			//attribute vec3 customColor;
-			attribute vec3 source;
+			//attribute vec3 source;
 			attribute vec3 destination;
 			attribute float emit_time;
 			attribute float duration;
@@ -41,8 +41,8 @@
 			    //    return;
 			    //}
 				//vColor = customColor;
-				vec4 mvPosition = modelViewMatrix * vec4( source, 1.0); //mix(source, destination,  duration / (time - emit_time)), 1.0 );
-				gl_PointSize = 500.0 * ( 300.0 / -mvPosition.z );
+				vec4 mvPosition = modelViewMatrix * vec4( mix(position, destination, smoothstep(0.0,duration, (time - emit_time))), 1.0 );
+				gl_PointSize = 100.0 * ( 300.0 / -mvPosition.z );
 
 				gl_Position = projectionMatrix * mvPosition;
 			}

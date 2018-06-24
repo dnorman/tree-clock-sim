@@ -4,16 +4,27 @@ import * as THREE from 'three'
 import * as Stats from 'stats.js'
 import * as dat from 'dat.gui'
 import {Slab,SlabSet} from "./slab";
+import DragControls from 'three-dragcontrols';
+import * as TrackballControls from 'three-trackballcontrols';
+
 
 var camera, scene, renderer, stats, material;
 var mouseX = 0, mouseY = 0;
 var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
 
-var SLAB_COUNT = 10;
+var SLAB_COUNT = 1000;
 
 var slabset;
 var frame = 0;
+var status = {
+    run: true,
+    "3D": false,
+    dropper: function(){}
+};
+var mouse;
+var trackBallControls;
+var dragControls;
 
 init();
 animate();
@@ -21,13 +32,14 @@ function init() {
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 2, 4000 );
     camera.position.z = 2000;
     scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2( 0x000000, 0.0001 );
+    scene.fog = new THREE.FogExp2( 0x000000, 0.01 );
 
-    slabset = new SlabSet( scene );
-    slabset.create_random_slabs( SLAB_COUNT );
-
-
+    mouse = new THREE.Vector2();
     renderer = new THREE.WebGLRenderer();
+
+    slabset = new SlabSet( scene, SLAB_COUNT );
+    slabset.create_random_slabs( SLAB_COUNT, status["3D"] );
+
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight );
     document.body.appendChild( renderer.domElement );
@@ -35,7 +47,35 @@ function init() {
     stats = new Stats();
     document.body.appendChild( stats.dom );
 
-    // var gui = new dat.GUI();
+    trackBallControls = new TrackballControls( camera );
+    trackBallControls.rotateSpeed = 1.0;
+    trackBallControls.zoomSpeed = 1.2;
+    trackBallControls.panSpeed = 0.8;
+    trackBallControls.noZoom = false;
+    trackBallControls.noPan = false;
+    trackBallControls.staticMoving = true;
+    trackBallControls.dynamicDampingFactor = 0.3;
+
+
+    dragControls = new DragControls([], camera, renderer.domElement);
+
+    dragControls.addEventListener( 'dragstart', function ( event ) { trackBallControls.enabled = false; } );
+    dragControls.addEventListener( 'dragend', function ( event ) { trackBallControls.enabled = true; } );
+
+    var gui = new dat.GUI();
+
+    gui.add(status,'run');
+    gui.add(status,'3D').onChange(function(){
+        scene.remove.apply(scene, scene.children);
+        slabset = new SlabSet( scene, SLAB_COUNT );
+        slabset.create_random_slabs( SLAB_COUNT, status["3D"] );
+    });
+
+    gui.add(status,'dropper').onChange(function(){
+        var slab = slabset.select_random_slab();
+        slab.color = new THREE.Color(0xff0000 );
+        slabset.update_attributes();
+    });
     // gui.add( material, 'sizeAttenuation' ).onChange( function() {
     //     material.needsUpdate = true;
     // } );
@@ -55,10 +95,17 @@ function onWindowResize() {
     camera.updateProjectionMatrix();
     renderer.setSize( window.innerWidth, window.innerHeight );
 }
+
 function onDocumentMouseMove( event ) {
-    mouseX = event.clientX - windowHalfX;
-    mouseY = event.clientY - windowHalfY;
+    event.preventDefault();
+    mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+    mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 }
+
+// function onDocumentMouseMove( event ) {
+//     mouseX = event.clientX - windowHalfX;
+//     mouseY = event.clientY - windowHalfY;
+// }
 function onDocumentTouchStart( event ) {
     if ( event.touches.length == 1 ) {
         event.preventDefault();
@@ -81,18 +128,17 @@ function animate() {
 }
 
 function render() {
-    // particles.rotation.x += 0.0005;
-    // particles.rotation.y += 0.001;
-
-    slabset.update(frame);
-
-    var time = Date.now() * 0.00005;
-    camera.position.x += ( mouseX - camera.position.x ) * 0.05;
-    camera.position.y += ( - mouseY - camera.position.y ) * 0.05;
-
 
     camera.lookAt( scene.position );
 
+    if (status.run){
+        slabset.update(frame);
+    }
+
+    trackBallControls.update();
     renderer.render( scene, camera );
-    frame++;
+
+    if (status.run) {
+        frame++;
+    }
 }

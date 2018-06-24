@@ -8,8 +8,8 @@
     <script type="x-shader/x-vertex" id="slab_vertexshader">
             uniform float time;
 			attribute float last_memo_time;
-			//attribute vec3 customColor;
-			//varying vec3 vColor;
+			attribute vec3 customColor;
+			varying vec3 vColor;
 
 			float cubicPulse( float c, float w, float x ){
                 x = abs(x - c);
@@ -18,9 +18,9 @@
                 return 1.0 - x*x*(3.0-2.0*x);
             }
 			void main() {
-				//vColor = customColor;
+				vColor = customColor;
 				vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-				float size = 200.0 + (200.0 * cubicPulse(0.5,0.5,smoothstep(-50.0,50.0, time - last_memo_time)));
+				float size = 100.0 + (100.0 * cubicPulse(0.5,0.5,smoothstep(-50.0,50.0, time - last_memo_time)));
 				gl_PointSize = size * ( 300.0 / -mvPosition.z );
 				gl_Position = projectionMatrix * mvPosition;
 			}
@@ -28,21 +28,28 @@
     <script type="x-shader/x-vertex" id="memo_vertexshader">
             uniform float time;
 			//attribute float size;
-			//attribute vec3 customColor;
+			attribute vec3 customColor;
 			//attribute vec3 source;
 			attribute vec3 destination;
 			attribute float emit_time;
 			attribute float duration;
+			varying vec3 vColor;
+			varying float show;
 
-			//varying vec3 vColor;
 			void main() {
-			    //if ( time >= emit_time + duration ) {
-			    //    gl_Position = vec4(0.0);
-			    //    return;
-			    //}
-				//vColor = customColor;
-				vec4 mvPosition = modelViewMatrix * vec4( mix(position, destination, smoothstep(0.0,duration, (time - emit_time))), 1.0 );
-				gl_PointSize = 100.0 * ( 300.0 / -mvPosition.z );
+
+
+			    float progress = smoothstep(0.0,duration, (time - emit_time));
+			    if ( progress == 1.0 ) {
+			        show = 0.0;
+                }else{
+                    show = 1.0;
+                }
+
+                vColor = customColor;
+				vec4 mvPosition = modelViewMatrix * vec4( mix(position, destination, progress), 1.0 );
+
+				gl_PointSize = 50.0 * ( 300.0 / -mvPosition.z );
 
 				gl_Position = projectionMatrix * mvPosition;
 			}
@@ -51,9 +58,22 @@
     <script type="x-shader/x-fragment" id="fragmentshader">
 			uniform vec3 color;
 			uniform sampler2D texture;
-			//varying vec3 vColor;
+			varying vec3 vColor;
+
 			void main() {
-				gl_FragColor = vec4(color,1.0); //vec4( color * vColor, 1.0 );
+				gl_FragColor = vec4( color * vColor, 1.0 );
+				gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
+				if ( gl_FragColor.a < ALPHATEST ) discard;
+			}
+    </script>
+    <script type="x-shader/x-fragment" id="memo_fragmentshader">
+			uniform vec3 color;
+			uniform sampler2D texture;
+            varying vec3 vColor;
+			varying float show;
+
+			void main() {
+				gl_FragColor = vec4(color * vColor,1.0 * show);
 				gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
 				if ( gl_FragColor.a < ALPHATEST ) discard;
 			}

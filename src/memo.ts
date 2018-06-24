@@ -1,23 +1,34 @@
 import {Slab} from './slab'
-import {BufferGeometry, Float32BufferAttribute, Points, Scene} from "three";
+import {BufferGeometry, Float32BufferAttribute, Points, Scene, Vector3} from "three";
 import * as THREE from "three";
 import * as DiscImage from './textures/sprites/disc.png';
 
+let speed = 5.0;
 
 export class Memo {
     from_slab: Slab;
     to_slab: Slab;
     emit_time: number;
     distance: number;
-    constructor( from_slab: Slab, to_slab: Slab, emit_time: number ){
+    duration: number;
+    public color: THREE.Color;
+    public delivered: boolean;
+    constructor( from_slab: Slab, to_slab: Slab, emit_time: number, color: THREE.Color ){
         var q = from_slab;
         var p = to_slab;
 
         // how many frames should this memo be inflight?
+        this.color = color;//new THREE.Color( 0xffffff );
         this.emit_time = emit_time;
         this.distance = Math.sqrt( ((q.x - p.x)**2) + ((q.y - p.y)**2) + ((q.z - p.z)**2) );
+        this.duration = Math.floor(this.distance / speed );
         this.from_slab = from_slab;
         this.to_slab = to_slab;
+        this.delivered = false;
+    }
+    deliver(){
+        this.to_slab.deliver(this);
+        this.delivered = true;
     }
 }
 class MemoUniforms{
@@ -29,7 +40,7 @@ class MemoUniforms{
             var sprite = new THREE.TextureLoader().load( DiscImage );
 
             this.time = { value: 0 };
-            this.color = { value: new THREE.Color( 0xff3333 ) };
+            this.color = { value: new THREE.Color( 0xcccccc ) };
             this.texture = { value: sprite };
         }
     }
@@ -37,18 +48,26 @@ class MemoUniforms{
 
 export class MemoSet {
     memos: Array<Memo>;
+    memo_free_slots: Array<number>;
     geometry: BufferGeometry;
     uniforms: MemoUniforms;
     points: Points;
     pool_size: number;
     constructor(scene: Scene) {
-        this.pool_size = 1000;
+        this.pool_size = 10000;
+
+        this.memo_free_slots = new Array(this.pool_size);
+        for (let i=0;i<this.pool_size;i++){
+            this.memo_free_slots[i] = (this.pool_size - i) - 1;
+        }
 
         this.geometry = new THREE.BufferGeometry();
+
         this.geometry.addAttribute('position',      new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 3), 3));
+        this.geometry.addAttribute('customColor', new THREE.Float32BufferAttribute( new Float32Array( this.pool_size * 3), 3 ) );
+
         this.geometry.addAttribute('destination', new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 3), 3));
 
-        // slab_geometry.addAttribute( 'customColor', new THREE.Float32BufferAttribute( colors, 3 ) );
         this.geometry.addAttribute('emit_time',    new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 1), 1));
         this.geometry.addAttribute('duration', new THREE.Float32BufferAttribute( new Float32Array(this.pool_size * 1), 1));
 
@@ -58,7 +77,7 @@ export class MemoSet {
         var material = new THREE.ShaderMaterial({
             uniforms: this.uniforms,
             vertexShader: document.getElementById('memo_vertexshader').textContent,
-            fragmentShader: document.getElementById('fragmentshader').textContent,
+            fragmentShader: document.getElementById('memo_fragmentshader').textContent,
             alphaTest: 0.5
         });
 
@@ -70,10 +89,12 @@ export class MemoSet {
         var attributes = this.points.geometry;
 
 
-        var position      = <Float32BufferAttribute> this.geometry.getAttribute('position');
+        var position    = <Float32BufferAttribute> this.geometry.getAttribute('position');
         var destination = <Float32BufferAttribute> this.geometry.getAttribute('destination');
         var emit_time   = <Float32BufferAttribute> this.geometry.getAttribute('emit_time');
         var duration    = <Float32BufferAttribute> this.geometry.getAttribute('duration');
+        var customColor = <Float32BufferAttribute> this.geometry.getAttribute('customColor');
+
 
         var from_slab;
         var to_slab;
@@ -84,29 +105,42 @@ export class MemoSet {
 
             from_slab = memo.from_slab;
             to_slab   = memo.to_slab;
-            //console.log("MEOW", from_slab.x, to_slab.x, memo.emit_time, memo.distance);
             position.setXYZ(i, from_slab.x, from_slab.y, from_slab.z);
             destination.setXYZ(i, to_slab.x, to_slab.y, to_slab.z);
             emit_time.setX(i, memo.emit_time );
-            duration.setX(i, Math.floor(memo.distance) );
-
-            // console.log('setXYZ');
-            // size.setX(i,200); //Math.max( PARTICLE_SIZE, attributes.size.array[i] * .99 );
+            duration.setX(i, memo.duration );
+            customColor.setXYZ(i, memo.color.r, memo.color.g, memo.color.b);
         }
         
         position.needsUpdate = true;
         destination.needsUpdate = true;
         emit_time.needsUpdate = true;
         duration.needsUpdate = true;
+        customColor.needsUpdate = true;
 
     }
     update (time: number) {
+        for (let i=0; i < this.memos.length; i++){
+            var memo = this.memos[i];
+            if (time > memo.emit_time + memo.duration){ // will need to extend this if there's any delivery flourish
+                memo.deliver();
+                this.memo_free_slots.push(i);
+            }
+        }
         var uniforms: any = this.uniforms;
         uniforms.time.value = time;
     }
-    send_memo(from_slab: Slab, to_slab: Slab, emit_time: number){
-        var memo = new Memo(from_slab, to_slab, emit_time);
-        this.memos.push( memo );
+    send_memo(from_slab: Slab, to_slab: Slab, emit_time: number, color: THREE.Color){ // color is a cheap analog for tree clock fragment
+        var memo = new Memo(from_slab, to_slab, emit_time, color);
+
+        var index = this.memo_free_slots.pop();
+
+        if (typeof index == 'undefined'){
+            console.error("Attempted to send memo when over capacity");
+            debugger;
+        }
+
+        this.memos[index] = memo;
         this.update_attributes();
     }
 }

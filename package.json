@@ -36,8 +36,11 @@
   },
   "dependencies": {
     "@types/three": "latest",
+    "dat.gui": "latest",
+    "npm": "^6.1.0",
+    "stats.js": "latest",
     "three": "latest",
-    "stats.js":"latest",
-    "dat.gui": "latest"
+    "three-dragcontrols": "^0.88.2",
+    "three-trackballcontrols": "0.0.7"
   }
 }

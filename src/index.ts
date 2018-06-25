@@ -19,8 +19,13 @@ var slabset;
 var frame = 0;
 var status = {
     run: true,
+    Slabs: 10.0,
+    Neighbors: 5,
+    Chattyness: 0.01,
     "3D": false,
-    dropper: function(){}
+    Dropper: function(){},
+    "RandNeighbor": function(){},
+    "ResetColor": function(){},
 };
 var mouse;
 var trackBallControls;
@@ -37,8 +42,7 @@ function init() {
     mouse = new THREE.Vector2();
     renderer = new THREE.WebGLRenderer();
 
-    slabset = new SlabSet( scene, SLAB_COUNT );
-    slabset.create_random_slabs( SLAB_COUNT, status["3D"] );
+    init_slabs();
 
     renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize( window.innerWidth, window.innerHeight );
@@ -47,7 +51,7 @@ function init() {
     stats = new Stats();
     document.body.appendChild( stats.dom );
 
-    trackBallControls = new TrackballControls( camera );
+    trackBallControls = new TrackballControls( camera, renderer.domElement );
     trackBallControls.rotateSpeed = 1.0;
     trackBallControls.zoomSpeed = 1.2;
     trackBallControls.panSpeed = 0.8;
@@ -57,24 +61,39 @@ function init() {
     trackBallControls.dynamicDampingFactor = 0.3;
 
 
-    dragControls = new DragControls([], camera, renderer.domElement);
+    //dragControls = new DragControls([], camera, renderer.domElement);
 
-    dragControls.addEventListener( 'dragstart', function ( event ) { trackBallControls.enabled = false; } );
-    dragControls.addEventListener( 'dragend', function ( event ) { trackBallControls.enabled = true; } );
+    //dragControls.addEventListener( 'dragstart', function ( event ) { trackBallControls.enabled = false; } );
+    //dragControls.addEventListener( 'dragend', function ( event ) { trackBallControls.enabled = true; } );
 
     var gui = new dat.GUI();
 
     gui.add(status,'run');
+    gui.add(status, 'Slabs', 10, 5000).onChange(function(){
+        console.log('CHANGE');
+        init_slabs();
+    });
     gui.add(status,'3D').onChange(function(){
-        scene.remove.apply(scene, scene.children);
-        slabset = new SlabSet( scene, SLAB_COUNT );
-        slabset.create_random_slabs( SLAB_COUNT, status["3D"] );
+        init_slabs();
     });
 
-    gui.add(status,'dropper').onChange(function(){
+    gui.add(status,'Dropper').onChange(function(){
         var slab = slabset.select_random_slab();
         slab.color = new THREE.Color(0xff0000 );
         slabset.update_attributes();
+    });
+    gui.add(status,'Chattyness',0.0,0.5).onChange(function(){
+        slabset.chattyness = status.Chattyness;
+    });
+    gui.add(status,'Neighbors',1,15).onChange(function(){
+        slabset.randomize_all_neighbors(status.Neighbors);
+    });
+    gui.add(status,'RandNeighbor').onChange(function(){
+        slabset.randomize_all_neighbors(status.Neighbors);
+    });
+
+    gui.add(status,'ResetColor').onChange(function(){
+        slabset.reset_all_colors();
     });
     // gui.add( material, 'sizeAttenuation' ).onChange( function() {
     //     material.needsUpdate = true;
@@ -87,6 +106,13 @@ function init() {
     document.addEventListener( 'touchmove', onDocumentTouchMove, false );
 
     window.addEventListener( 'resize', onWindowResize, false );
+}
+function init_slabs (){
+    scene.remove.apply(scene, scene.children);
+    slabset = new SlabSet( scene, status.Slabs, status );
+    slabset.chattyness = status.Chattyness;
+    slabset.create_random_slabs( status.Slabs, status["3D"] );
+    slabset.randomize_all_neighbors(status.Neighbors);
 }
 function onWindowResize() {
     windowHalfX = window.innerWidth / 2;

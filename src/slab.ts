@@ -3,8 +3,6 @@ import * as THREE from "three";
 import {BufferGeometry, Scene, Camera, Color, Points, Float32BufferAttribute, Raycaster} from "three";
 import * as DiscImage from './textures/sprites/disc.png';
 
-var NEIGHBOR_COUNT = 10;
-
 export class Slab {
     id: number;
     public x: number;
@@ -26,30 +24,36 @@ export class Slab {
         this.color = new THREE.Color( 0xffffff );
 
         this.slabset = slabset;
-
-        this.neighbors = [];
-
-        if ( slabset.slabs.length > 0 ){
-            for ( var i = 0; i < NEIGHBOR_COUNT; i ++ ) {
-                var neighbor = slabset.slabs[Math.floor(Math.random() * slabset.slabs.length )];
-                if (neighbor && this.neighbors.indexOf(neighbor) == -1) {
-                    this.neighbors.push(neighbor);
-                }
-            }
-        }
     }
     select_peer(){
         var peer = this.neighbors[Math.floor(Math.random() * this.neighbors.length )];
         return peer;
     }
     deliver(memo: Memo) {
-        this.update_color( this.color.multiply(memo.color) );
+        this.apply_color( memo.color );
     }
-    update_color (color){
-        this.color = color;
+    apply_color (memo_color: THREE.Color){
+        this.color.multiply( memo_color )
         var customColor = <Float32BufferAttribute> this.slabset.geometry.getAttribute('customColor');
-        customColor.setXYZ(this.id, color.r, color.g, color.b);
+        customColor.setXYZ(this.id, this.color.r, this.color.g, this.color.b);
         customColor.needsUpdate = true;
+    }
+    choose_random_neighbors(count: number){
+        this.neighbors = [];
+        if ( this.slabset.slabs.length > 0 ){
+            for ( var i = 0; i < count; i ++ ) {
+                var neighbor = this.slabset.slabs[Math.floor(Math.random() * this.slabset.slabs.length )];
+                if (neighbor == this){
+                    if(this.slabset.slabs.length > 1){
+                        i--;
+                    }
+                    continue;
+                }
+                if (neighbor && this.neighbors.indexOf(neighbor) == -1) {
+                    this.neighbors.push(neighbor);
+                }
+            }
+        }
     }
 }
 class SlabUniforms{
@@ -74,14 +78,18 @@ export class SlabSet {
     points: Points;
     memoset: MemoSet;
     raycaster: Raycaster;
-    constructor(scene: Scene, slab_count: number ){
+    chattyness: number;
+    status: Object;
+    constructor(scene: Scene, slab_count: number, status: Object){
         this.geometry = new THREE.BufferGeometry();
         this.geometry.addAttribute( 'position',    new THREE.Float32BufferAttribute( new Float32Array(slab_count * 3), 3 ) );
         this.geometry.addAttribute( 'customColor', new THREE.Float32BufferAttribute( new Float32Array(slab_count * 3), 3 ) );
         this.geometry.addAttribute( 'last_memo_time', new THREE.Float32BufferAttribute( new Float32Array( slab_count * 1), 1 ) );
 
+        this.status = status;
         this.uniforms = new SlabUniforms();
         this.slabs = [];
+        this.chattyness = 0.01;
 
         var material = new THREE.ShaderMaterial( {
             uniforms: this.uniforms,
@@ -94,7 +102,7 @@ export class SlabSet {
         this.points = new THREE.Points( this.geometry, material );
         scene.add( this.points );
 
-        this.memoset = new MemoSet(scene);
+        this.memoset = new MemoSet(scene, status);
     }
 
     create_random_slabs( count: number, threedim: boolean ) {
@@ -151,17 +159,34 @@ export class SlabSet {
 
         this.memoset.update(time);
     }
+    randomize_all_neighbors(count: number){
+        for (let slab of this.slabs) {
+            slab.choose_random_neighbors(count);
+        }
+    }
+    reset_all_colors(){
+        this.memoset.reset_all_colors();
+
+        for (let slab of this.slabs) {
+            slab.color = new THREE.Color(0xffffff);
+        }
+        this.update_attributes();
+
+    }
     send_memos(time){
 
         var last_memo_time = <Float32BufferAttribute> this.geometry.getAttribute('last_memo_time');
         var other_slab;
+        var status : any = this.status;
         for (let slab of this.slabs){
-            let number = (Math.random() * 20 );//this.slabs.length);
-            if (number < 0.5 ) {
+            if (!status.run) return;
+
+            let number = Math.random();//this.slabs.length);
+            if (number < this.chattyness ) {
                 other_slab = slab.select_peer();
                 if (other_slab) {
                     //last_memo_time.setX(slab.id, time);
-                    this.memoset.send_memo(slab, other_slab,time, slab.color);
+                    this.memoset.send_memo(slab, other_slab,time, slab.color.clone());
                 }
             }
         }

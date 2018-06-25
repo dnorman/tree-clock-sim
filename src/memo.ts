@@ -53,8 +53,10 @@ export class MemoSet {
     uniforms: MemoUniforms;
     points: Points;
     pool_size: number;
-    constructor(scene: Scene) {
+    status: Object;
+    constructor(scene: Scene, status: Object) {
         this.pool_size = 10000;
+        this.status = status;
 
         this.memo_free_slots = new Array(this.pool_size);
         for (let i=0;i<this.pool_size;i++){
@@ -130,14 +132,23 @@ export class MemoSet {
         var uniforms: any = this.uniforms;
         uniforms.time.value = time;
     }
+    reset_all_colors(){
+
+        for (let memo of this.memos) {
+            memo.color = new THREE.Color(0xffffff);
+        }
+        this.update_attributes();
+    }
     send_memo(from_slab: Slab, to_slab: Slab, emit_time: number, color: THREE.Color){ // color is a cheap analog for tree clock fragment
         var memo = new Memo(from_slab, to_slab, emit_time, color);
 
         var index = this.memo_free_slots.pop();
 
         if (typeof index == 'undefined'){
-            console.error("Attempted to send memo when over capacity");
-            debugger;
+            var status : any = this.status;
+            status.run = false;
+            alert("Exceeded maximum memo inflight buffer size");
+            return;
         }
 
         this.memos[index] = memo;

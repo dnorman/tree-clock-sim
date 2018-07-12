@@ -1,4 +1,4 @@
-import {Memo,MemoSet} from './memo'
+import {Memo, MemoHead, MemoEmission, MemoEmissionSet} from './memo'
 import * as THREE from "three";
 import {BufferGeometry, Scene, Camera, Color, Points, Float32BufferAttribute, Raycaster} from "three";
 import * as DiscImage from './textures/sprites/disc.png';
@@ -10,10 +10,14 @@ export class Slab {
     public z: number;
     public color: Color;
     neighbors: Array<Slab>;
+    beacon_increment: number;
+    clockstate: MemoHead;
     slabset: SlabSet;
-    constructor(slabset: SlabSet, id: number, threedim: boolean){
+    constructor(slabset: SlabSet, id: number, threedim: boolean, seed: MemoHead){
         this.id = id;
 
+        this.clockstate = seed;
+        this.beacon_increment = 0;
         this.x = 2000 * Math.random() - 1000;
         this.y = 2000 * Math.random() - 1000;
         if (threedim) {
@@ -25,15 +29,28 @@ export class Slab {
 
         this.slabset = slabset;
     }
+    init_new_system(){
+        this.clockstate = new MemoHead([]);
+        var color = new THREE.Color(0xffffff);
+        var memo = new Memo(this, color);
+        this.clockstate = new MemoHead([memo]);
+    }
+    get_increment() {
+        return this.beacon_increment++;
+    }
     select_peer(){
         var peer = this.neighbors[Math.floor(Math.random() * this.neighbors.length )];
         return peer;
     }
-    deliver(memo: Memo) {
-        this.apply_color( memo.color );
+    deliver(memoemission: MemoEmission) {
+        this.apply_memo( memoemission.memo );
     }
-    apply_color (memo_color: THREE.Color){
-        this.color.multiply( memo_color )
+    apply_memo (new_memo: Memo){
+
+
+        this.clockstate = this.clockstate.apply(new_memo);
+
+        this.color.multiply( new_memo.color )
         var customColor = <Float32BufferAttribute> this.slabset.geometry.getAttribute('customColor');
         customColor.setXYZ(this.id, this.color.r, this.color.g, this.color.b);
         customColor.needsUpdate = true;
@@ -76,7 +93,7 @@ export class SlabSet {
     geometry: BufferGeometry;
     uniforms: SlabUniforms;
     points: Points;
-    memoset: MemoSet;
+    memoemissionset: MemoEmissionSet;
     raycaster: Raycaster;
     chattyness: number;
     status: Object;
@@ -102,12 +119,16 @@ export class SlabSet {
         this.points = new THREE.Points( this.geometry, material );
         scene.add( this.points );
 
-        this.memoset = new MemoSet(scene, status);
+        this.memoemissionset = new MemoEmissionSet(scene, status);
     }
 
     create_random_slabs( count: number, threedim: boolean ) {
-        for (var i = 0; i < count; i++) {
-            var slab = new Slab(this, i, threedim);
+        var seed_slab = new Slab(this, i, threedim, []);
+        seed_slab.init_new_system();
+        this.slabs.push(seed_slab);
+
+        for (var i = 0; i <= count; i++) {
+            var slab = new Slab(this, i, threedim, seed_slab.clockstate);
             this.slabs.push(slab);
         }
         this.update_attributes();
@@ -157,7 +178,7 @@ export class SlabSet {
             this.send_memos(time);
         //}
 
-        this.memoset.update(time);
+        this.memoemissionset.update(time);
     }
     randomize_all_neighbors(count: number){
         for (let slab of this.slabs) {
@@ -165,7 +186,7 @@ export class SlabSet {
         }
     }
     reset_all_colors(){
-        this.memoset.reset_all_colors();
+        this.memoemissionset.reset_all_colors();
 
         for (let slab of this.slabs) {
             slab.color = new THREE.Color(0xffffff);
@@ -179,14 +200,16 @@ export class SlabSet {
         var other_slab;
         var status : any = this.status;
         for (let slab of this.slabs){
-            if (!status.run) return;
+            if (!status.run) return; // necessary in case we exceed our max inflight memoemissions and need to pause
 
             let number = Math.random();//this.slabs.length);
             if (number < this.chattyness ) {
+                var memo = new Memo( slab, slab.color.clone() );
+
                 other_slab = slab.select_peer();
                 if (other_slab) {
                     //last_memo_time.setX(slab.id, time);
-                    this.memoset.send_memo(slab, other_slab,time, slab.color.clone());
+                    this.memoemissionset.send_memo(slab, other_slab,time, memo);
                 }
             }
         }

@@ -3,22 +3,72 @@ import {BufferGeometry, Float32BufferAttribute, Points, Scene, Vector3} from "th
 import * as THREE from "three";
 import * as DiscImage from './textures/sprites/disc.png';
 
+// Reading = Array<Memo>
+// Memo = SlabID+Increment, Array<Memo>
+
+
+
 let speed = 5.0;
 
 export class Memo {
+    slab_id: number;
+    increment: number;
+    public parents: MemoHead;
+    public color: THREE.Color;
+    constructor(slab: Slab, color: THREE.Color){
+        this.slab_id = slab.id;
+        this.increment = slab.get_increment();
+        this.parents = slab.clockstate;
+        this.color = color;
+    }
+    descends(memo: Memo){
+        if (memo == this){
+            return true;
+        }
+        return this.parents.descends_or_contains(memo);
+    }
+}
+
+export class MemoHead {
+    memos: Array<Memo>;
+    constructor(memos: Array<Memo>){
+        this.memos = memos;
+    }
+    apply(new_memo: Memo):MemoHead{
+        var new_head : Array<Memo> = [new_memo];
+
+        for (let memo of this.memos) {
+            if (memo === new_memo){
+                //
+            }else if (new_memo.descends(memo)) {
+                //
+            }else{
+                new_head.push(memo);
+            }
+        }
+
+        return new MemoHead(new_head);
+    }
+    descends_or_contains(memo){
+        if (this.memos.length == 0) {
+            return false; //  searching for positive descendency, not merely non-ascendency
+        }
+    }
+}
+
+export class MemoEmission {
+    memo: Memo;
     from_slab: Slab;
     to_slab: Slab;
     emit_time: number;
     distance: number;
     duration: number;
-    public color: THREE.Color;
     public delivered: boolean;
-    constructor( from_slab: Slab, to_slab: Slab, emit_time: number, color: THREE.Color ){
+    constructor( from_slab: Slab, to_slab: Slab, emit_time: number, memo: Memo ){
         var q = from_slab;
         var p = to_slab;
 
         // how many frames should this memo be inflight?
-        this.color = color;//new THREE.Color( 0xffffff );
         this.emit_time = emit_time;
         this.distance = Math.sqrt( ((q.x - p.x)**2) + ((q.y - p.y)**2) + ((q.z - p.z)**2) );
         this.duration = Math.floor(this.distance / speed );
@@ -31,7 +81,7 @@ export class Memo {
         this.delivered = true;
     }
 }
-class MemoUniforms{
+class MemoEmissionUniforms{
     time: Object;
     color: Object;
     texture: Object;
@@ -46,11 +96,11 @@ class MemoUniforms{
     }
 }
 
-export class MemoSet {
-    memos: Array<Memo>;
+export class MemoEmissionSet {
+    emissions: Array<MemoEmission>;
     memo_free_slots: Array<number>;
     geometry: BufferGeometry;
-    uniforms: MemoUniforms;
+    uniforms: MemoEmissionUniforms;
     points: Points;
     pool_size: number;
     status: Object;
@@ -73,8 +123,8 @@ export class MemoSet {
         this.geometry.addAttribute('emit_time',    new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 1), 1));
         this.geometry.addAttribute('duration', new THREE.Float32BufferAttribute( new Float32Array(this.pool_size * 1), 1));
 
-        this.uniforms = new MemoUniforms();
-        this.memos = [];
+        this.uniforms = new MemoEmissionUniforms();
+        this.emissions = [];
 
         var material = new THREE.ShaderMaterial({
             uniforms: this.uniforms,
@@ -102,7 +152,7 @@ export class MemoSet {
         var to_slab;
 
         for ( var i = 0, l = this.pool_size; i < l; i ++ ) {
-            var memo = this.memos[i];
+            var memo = this.emissions[i];
             if (!memo) continue;
 
             from_slab = memo.from_slab;
@@ -122,8 +172,8 @@ export class MemoSet {
 
     }
     update (time: number) {
-        for (let i=0; i < this.memos.length; i++){
-            var memo = this.memos[i];
+        for (let i=0; i < this.emissions.length; i++){
+            var memo = this.emissions[i];
             if (time > memo.emit_time + memo.duration){ // will need to extend this if there's any delivery flourish
                 memo.deliver();
                 this.memo_free_slots.push(i);
@@ -134,13 +184,14 @@ export class MemoSet {
     }
     reset_all_colors(){
 
-        for (let memo of this.memos) {
-            memo.color = new THREE.Color(0xffffff);
+        for (let emission of this.emissions) {
+            emission.memo.color = new THREE.Color(0xffffff);
         }
         this.update_attributes();
     }
-    send_memo(from_slab: Slab, to_slab: Slab, emit_time: number, color: THREE.Color){ // color is a cheap analog for tree clock fragment
-        var memo = new Memo(from_slab, to_slab, emit_time, color);
+
+    send_memo(from_slab: Slab, to_slab: Slab, emit_time: number, memo: Memo){ // color is a cheap analog for tree clock fragment
+        var emission = new MemoEmission(from_slab, to_slab, emit_time, memo);
 
         var index = this.memo_free_slots.pop();
 
@@ -151,7 +202,7 @@ export class MemoSet {
             return;
         }
 
-        this.memos[index] = memo;
+        this.emissions[index] = emission;
         this.update_attributes();
     }
 }

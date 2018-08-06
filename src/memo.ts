@@ -124,28 +124,13 @@ export class MemoSet {
         // this.update_range =
 
 
-        var ur = this.positionAttribute.updateRange;
-
-        // TODO: this is pretty ugly. Clean it up
-        if (ur.count == -1){
-            ur.offset = index;
-            ur.count = 1;
-        }else if (index < ur.offset){
-            // EG: offset was 10, count was 2
-            // index is 9, new count should be 3, and offset = 9
-            ur.count = ur.count + (ur.offset - index);
-            ur.offset = index;
-        }else if ( ur.offset + Math.max(ur.count,0) < index ){
-            // EG: offset was 9, count was 3
-            // index was 13, new count should be 4
-            ur.count = ur.count + ( index - (ur.offset + ur.count) );
-        }
+        this.updateRange(this.positionAttribute.updateRange, index);
 
         // = this.update_range;
-        this.destinationAttribute.updateRange  = ur;
-        this.emitTimeAttribute.updateRange = ur;
-        this.durationAttribute.updateRange = ur;
-        this.customColorAttribute.updateRange = ur;
+        this.updateRange(this.destinationAttribute.updateRange, index);
+        this.updateRange(this.emitTimeAttribute.updateRange, index);
+        this.updateRange(this.durationAttribute.updateRange, index);
+        this.updateRange(this.customColorAttribute.updateRange, index);
 
         //
         this.positionAttribute.needsUpdate = true;
@@ -161,6 +146,23 @@ export class MemoSet {
         // this.customColorAttribute.updateRange = {offset:0, count: 2};
 
 
+    }
+    updateRange( ur, index ) {
+        // TODO: this is pretty ugly. Clean it up
+        if (ur.count == -1){
+            ur.offset = index;
+            ur.count = 1;
+        }
+        else if (index < ur.offset){
+            // EG: offset was 10, count was 2
+            // index is 9, new count should be 3, and offset = 9
+            ur.count = ur.count + (ur.offset - index) + 10
+            ur.offset = index;
+        }else if ( ur.offset + Math.max(ur.count,0) < index ){
+            // EG: offset was 9, count was 3
+            // index was 13, new count should be 4
+            ur.count = ur.count + ( index - (ur.offset + ur.count) ) + 10;
+        }
     }
     update (time: number) {
         for (let i=0; i < this.memos.length; i++){
@@ -204,7 +206,7 @@ export class MemoSet {
         var index = this.memo_free_slots.pop();
         if (index > this.max_allocated_index) {
             this.max_allocated_index = index;
-            //this.geometry.setDrawRange( 0, this.max_allocated_index + 1 );
+            this.geometry.setDrawRange( 0, this.max_allocated_index + 1 );
         }
         return index;
     }

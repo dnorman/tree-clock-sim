@@ -34,20 +34,16 @@
 			attribute vec3 destination;
 			attribute float emit_time;
 			attribute float duration;
-			varying vec3 vColor;
+			varying vec4 vColor;
 			varying float show;
 
 			void main() {
 
 
 			    float progress = smoothstep(0.0,duration, (time - emit_time));
-			    if ( progress == 1.0 ) {
-			        show = 0.0;
-                }else{
-                    show = 1.0;
-                }
 
-                vColor = customColor;
+                // This is wrong - will cause it to fade out rather than disappear suddenly
+                vColor = vec4(customColor, 1.0); // - progress);
 				vec4 mvPosition = modelViewMatrix * vec4( mix(position, destination, progress), 1.0 );
 
 				gl_PointSize = 50.0 * ( 300.0 / -mvPosition.z );
@@ -70,11 +66,11 @@
     <script type="x-shader/x-fragment" id="memo_fragmentshader">
 			uniform vec3 color;
 			uniform sampler2D texture;
-            varying vec3 vColor;
+            varying vec4 vColor;
 			varying float show;
 
 			void main() {
-				gl_FragColor = vec4(color * vColor,1.0 * show);
+				gl_FragColor = vec4(color,1.0) * vColor;
 				gl_FragColor = gl_FragColor * texture2D( texture, gl_PointCoord );
 				if ( gl_FragColor.a < ALPHATEST ) discard;
 			}

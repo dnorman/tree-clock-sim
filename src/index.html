@@ -40,10 +40,9 @@
 			void main() {
 
 
-			    float progress = smoothstep(0.0,duration, (time - emit_time));
-
-                // This is wrong - will cause it to fade out rather than disappear suddenly
-                vColor = vec4(customColor, 1.0); // - progress);
+                float elapsed = (time - emit_time);
+			    float progress = clamp(elapsed / duration, 0.0, 1.0);
+                vColor = vec4(customColor, step(time, emit_time + duration)  );
 				vec4 mvPosition = modelViewMatrix * vec4( mix(position, destination, progress), 1.0 );
 
 				gl_PointSize = 50.0 * ( 300.0 / -mvPosition.z );

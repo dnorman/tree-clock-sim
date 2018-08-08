@@ -76,23 +76,23 @@ export class MemoSet {
         this.geometry = new THREE.BufferGeometry();
 
         this.positionAttribute = new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 3), 3);
-        this.positionAttribute.dynamic = true;
+        this.positionAttribute.setDynamic(true);
         this.geometry.addAttribute('position',  this.positionAttribute);
 
         this.customColorAttribute = new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 3), 3);
-        this.customColorAttribute.dynamic = true;
+        this.customColorAttribute.setDynamic(true);
         this.geometry.addAttribute('customColor', this.customColorAttribute );
 
         this.destinationAttribute = new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 3), 3);
-        this.destinationAttribute.dynamic = true;
+        this.destinationAttribute.setDynamic(true);
         this.geometry.addAttribute('destination', this.destinationAttribute);
 
         this.emitTimeAttribute = new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 1), 1);
-        this.emitTimeAttribute.dynamic = true;
+        this.emitTimeAttribute.setDynamic(true);
         this.geometry.addAttribute('emit_time', this.emitTimeAttribute );
 
         this.durationAttribute = new THREE.Float32BufferAttribute(new Float32Array(this.pool_size * 1), 1);
-        this.durationAttribute.dynamic = true;
+        this.durationAttribute.setDynamic(true);
         this.geometry.addAttribute('duration', this.durationAttribute );
 
         this.uniforms = new MemoUniforms();
@@ -121,16 +121,11 @@ export class MemoSet {
         this.durationAttribute.setX(index, memo.duration );
         this.customColorAttribute.setXYZ(index, memo.color.r, memo.color.g, memo.color.b);
 
-        // this.update_range =
-
-
-        this.updateRange(this.positionAttribute.updateRange, index);
-
-        // = this.update_range;
-        this.updateRange(this.destinationAttribute.updateRange, index);
-        this.updateRange(this.emitTimeAttribute.updateRange, index);
-        this.updateRange(this.durationAttribute.updateRange, index);
-        this.updateRange(this.customColorAttribute.updateRange, index);
+        this.updateRange(this.positionAttribute.updateRange, index, 3);
+        this.updateRange(this.destinationAttribute.updateRange, index, 3);
+        this.updateRange(this.emitTimeAttribute.updateRange, index, 1);
+        this.updateRange(this.durationAttribute.updateRange, index, 1);
+        this.updateRange(this.customColorAttribute.updateRange, index, 3);
 
         //
         this.positionAttribute.needsUpdate = true;
@@ -139,54 +134,57 @@ export class MemoSet {
         this.durationAttribute.needsUpdate = true;
         this.customColorAttribute.needsUpdate = true;
         //
-        // this.positionAttribute.updateRange  = {offset:0, count: 2};
-        // this.destinationAttribute.updateRange = {offset:0, count: 2};
-        // this.emitTimeAttribute.updateRange = {offset:0, count: 2};
-        // this.durationAttribute.updateRange = {offset:0, count: 2};
-        // this.customColorAttribute.updateRange = {offset:0, count: 2};
-
+        //this.positionAttribute.updateRange  = {offset:0, count: this.max_allocated_index*3};
+        // this.destinationAttribute.updateRange = {offset:0, count: this.max_allocated_index*3};
+        // this.emitTimeAttribute.updateRange = {offset:0, count: this.max_allocated_index};
+        // this.durationAttribute.updateRange = {offset:0, count: this.max_allocated_index};
+        // this.customColorAttribute.updateRange = {offset:0, count: this.max_allocated_index*3};
 
     }
-    updateRange( ur, index ) {
+    updateRange( ur, index, itemsize ) {
         // TODO: this is pretty ugly. Clean it up
+        let offset = index * itemsize;
+
         if (ur.count == -1){
-            ur.offset = index;
-            ur.count = 1;
-        }
-        else if (index < ur.offset){
-            // EG: offset was 10, count was 2
-            // index is 9, new count should be 3, and offset = 9
-            ur.count = ur.count + (ur.offset - index) + 10
-            ur.offset = index;
-        }else if ( ur.offset + Math.max(ur.count,0) < index ){
-            // EG: offset was 9, count was 3
-            // index was 13, new count should be 4
-            ur.count = ur.count + ( index - (ur.offset + ur.count) ) + 10;
+            //console.log('UR INIT', index, 1);
+            ur.offset = offset;
+            ur.largest_offset = offset;
+            ur.count = itemsize;
+        } else if (index * itemsize < ur.offset){
+            ur.offset = offset;
+            ur.count = (ur.largest_offset - ur.offset) + itemsize;
+        }else if ( offset > (ur.offset + ur.count) ){
+            ur.largest_offset = offset;
+            ur.count = (ur.largest_offset - ur.offset) + itemsize;
         }
     }
     update (time: number) {
+        console.log('UPDATE',time, this.max_allocated_index);
         for (let i=0; i < this.memos.length; i++){
             var memo = this.memos[i];
-            if (time > memo.emit_time + memo.duration){ // will need to extend this if there's any delivery flourish
+            if (memo && (time > (memo.emit_time + memo.duration))){ // will need to extend this if there's any delivery flourish
+                //console.log('deliver', i, time, memo.emit_time, memo.duration, memo.emit_time + memo.duration);
                 memo.deliver();
-                this.deallocate(i);
+                this.deallocate(memo.index);
             }
         }
         var uniforms: any = this.uniforms;
         uniforms.time.value = time;
     }
     reset_all_colors(){
-        var customColor = <Float32BufferAttribute> this.geometry.getAttribute('customColor');
         var memo;
 
         var newcolor = new THREE.Color(0xffffff);
         for ( var i = 0, l = this.memos.length; i < l; i ++ ) {
             memo = this.memos[i];
-            memo.color = newcolor.clone();
-            customColor.setXYZ(i, memo.color.r, memo.color.g, memo.color.b);
+            if ( memo ) {
+                memo.color = newcolor.clone();
+                this.customColorAttribute.setXYZ(i, memo.color.r, memo.color.g, memo.color.b);
+            }
         }
         // Using the big hammer here, because this is the only place we should ever update the whole lot of 'em
-        customColor.needsUpdate = true;
+        this.customColorAttribute.needsUpdate = true;
+        this.customColorAttribute.updateRange = { offset: 0, count: -1 };
     }
     send_memo(from_slab: Slab, to_slab: Slab, emit_time: number, color: THREE.Color){ // color is a cheap analog for tree clock fragment
         var index = this.allocate();
@@ -206,12 +204,15 @@ export class MemoSet {
         var index = this.memo_free_slots.pop();
         if (index > this.max_allocated_index) {
             this.max_allocated_index = index;
-            this.geometry.setDrawRange( 0, this.max_allocated_index + 1 );
+            //console.log('set draw range', this.max_allocated_index);
+            this.geometry.setDrawRange( 0, this.max_allocated_index );
         }
         return index;
     }
     deallocate(index: number) {
+        this.memos[index] = undefined;
         this.memo_free_slots.push(index);
+
 
         // TODO: more efficiently manage this so we don't have to iterate the active slots to update max_allocated_index downward
         //

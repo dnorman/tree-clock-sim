@@ -101,7 +101,7 @@ class MemoEmissionUniforms{
 
 export class MemoEmissionSet {
     emissions: Array<MemoEmission>;
-    memo_free_slots: Array<number>;
+    emission_free_slots: Array<number>;
     max_allocated_index: number;
     geometry: BufferGeometry;
     uniforms: MemoEmissionUniforms;
@@ -119,9 +119,9 @@ export class MemoEmissionSet {
         this.status = status;
         this.max_allocated_index = -1;
 
-        this.memo_free_slots = new Array(this.pool_size);
+        this.emission_free_slots = new Array(this.pool_size);
         for (let i=0;i<this.pool_size;i++){
-            this.memo_free_slots[i] = (this.pool_size - i) - 1;
+            this.emission_free_slots[i] = (this.pool_size - i) - 1;
         }
 
         this.geometry = new THREE.BufferGeometry();
@@ -239,9 +239,9 @@ export class MemoEmissionSet {
     }
 
     send_memo(from_slab: Slab, to_slab: Slab, emit_time: number, memo: Memo){ // color is a cheap analog for tree clock fragment
-        var emission = new MemoEmission(from_slab, to_slab, emit_time, memo);
-
         var index = this.allocate();
+
+        var emission = new MemoEmission(from_slab, to_slab, emit_time, index, memo);
 
         if (typeof index == 'undefined'){
             var status : any = this.status;
@@ -255,7 +255,7 @@ export class MemoEmissionSet {
 
     }
     allocate() {
-        var index = this.memo_free_slots.pop();
+        var index = this.emission_free_slots.pop();
         if (index > this.max_allocated_index) {
             this.max_allocated_index = index;
             //console.log('set draw range', this.max_allocated_index);
@@ -264,8 +264,8 @@ export class MemoEmissionSet {
         return index;
     }
     deallocate(index: number) {
-        this.memos[index] = undefined;
-        this.memo_free_slots.push(index);
+        this.emissions[index] = undefined;
+        this.emission_free_slots.push(index);
 
 
         // TODO: more efficiently manage this so we don't have to iterate the active slots to update max_allocated_index downward

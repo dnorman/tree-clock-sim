@@ -3,6 +3,31 @@ import * as THREE from "three";
 import {BufferGeometry, Scene, Camera, Color, Points, Float32BufferAttribute, Raycaster} from "three";
 import * as DiscImage from './textures/sprites/disc.png';
 
+
+// TODO: calculate the mean clock reading comparison time for each slab in the system
+// How?
+// * Could do it through sampling and actually doing the comparison.
+//   (real, or virtualized?  - benefit of real is that it can approximate load,
+//    but downside is that it would create even load, which might not be desirable)
+// performance will definitely change with which comparisons are requested, but we
+// might want to measure hypothetical performance without affecting it, so a hybrid approach seems reasonable...
+// That means: do the comparison in "real" mode for places where work is occurring. This yields a clock convergence metric AND effects system dynamics
+//             AND also do the comparison (sampled?) in virtual mode in places where "work is not occurring" which will measure hypothetical performance
+//             if work were to begin there, without actually changing the performance
+
+// TODO2: Create a plot of convergence time for uniform workload
+// TODO3: create a plot of convergence time for newly started workloads (recency to last convergence vs convergence time for median comparator? )
+
+// QUESTION: in all of the above cases, how do we select the comparator? Seems quite unfair to actually select one at random.
+// (though "warp" comparator selection is something that might be interesting plot as a point of comparison)
+// INITIAL ANSWER: best to have a radius selector, where the comparator point is selected from within that radius
+
+// PLOT idea: comparator selection radius versus convergence time versus convergence recency ( 3d plot )
+
+
+
+// * Could do a time accelerated simulation (not accurate due to changes of hosting status while requests inflight)_
+
 export class Slab {
     id: number;
     public x: number;

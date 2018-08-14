@@ -160,16 +160,17 @@ export class MemoEmissionSet {
         this.points.frustumCulled = false;
         scene.add(this.points);
     }
-    update_attributes(memo){
+    update_attributes(index){
 
-        var index : number = memo.index;
-        var from_slab = memo.from_slab;
-        var to_slab   = memo.to_slab;
+        var emission = this.emissions[index];
+        var memo = emission.memo;
+        var from_slab = emission.from_slab;
+        var to_slab   = emission.to_slab;
 
         this.positionAttribute.setXYZ(index, from_slab.x, from_slab.y, from_slab.z);
         this.destinationAttribute.setXYZ(index, to_slab.x, to_slab.y, to_slab.z);
-        this.emitTimeAttribute.setX(index, memo.emit_time );
-        this.durationAttribute.setX(index, memo.duration );
+        this.emitTimeAttribute.setX(index, emission.emit_time );
+        this.durationAttribute.setX(index, emission.duration );
         this.customColorAttribute.setXYZ(index, memo.color.r, memo.color.g, memo.color.b);
 
         this.updateRange(this.positionAttribute.updateRange, index, 3);

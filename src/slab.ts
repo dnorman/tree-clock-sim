@@ -9,7 +9,7 @@ export class Slab {
     public y: number;
     public z: number;
     public color: Color;
-    neighbors: Array<Slab>;
+    neighbors: Array<[number,Slab]>;
     beacon_increment: number;
     clockstate: MemoHead;
     slabset: SlabSet;
@@ -38,15 +38,30 @@ export class Slab {
     get_increment() {
         return this.beacon_increment++;
     }
-    select_peer(){
-        var peer = this.neighbors[Math.floor(Math.random() * this.neighbors.length )];
-        return peer;
+    select_peers(count){
+        count = Math.min(count, this.neighbors.length);
+
+        return this.neighbors.slice(0, count).map( n => n[1] );
     }
     deliver(memoemission: MemoEmission) {
         this.apply_memo( memoemission.memo );
+
+        let from_slab_id = memoemission.from_slab.id;
+        let neighbor_index = this.neighbors.findIndex( n => n[1].id == from_slab_id );
+        if (neighbor_index > -1){
+            let ex = this.neighbors.splice(neighbor_index, 1)[0];
+            ex[0]++;
+            this.neighbors.unshift(ex);
+        }else{
+            this.neighbors.unshift([1,memoemission.from_slab]);
+        }
+
+        this.neighbors = this.neighbors.sort((a, b) => b[0] - a[0]);
+        if (this.neighbors.length > 5){
+            this.neighbors.pop();
+        }
     }
     apply_memo (new_memo: Memo){
-
 
         this.clockstate = this.clockstate.apply(new_memo);
 
@@ -66,8 +81,8 @@ export class Slab {
                     }
                     continue;
                 }
-                if (neighbor && this.neighbors.indexOf(neighbor) == -1) {
-                    this.neighbors.push(neighbor);
+                if (neighbor && this.neighbors.findIndex( n => n[1].id == neighbor.id) == -1) {
+                    this.neighbors.push([0,neighbor]);
                 }
             }
         }
@@ -123,11 +138,11 @@ export class SlabSet {
     }
 
     create_random_slabs( count: number, threedim: boolean ) {
-        var seed_slab = new Slab(this, i, threedim, []);
+        var seed_slab = new Slab(this,0, threedim, new MemoHead([]));
         seed_slab.init_new_system();
         this.slabs.push(seed_slab);
 
-        for (var i = 0; i <= count; i++) {
+        for (var i = 1; i < count; i++) {
             var slab = new Slab(this, i, threedim, seed_slab.clockstate);
             this.slabs.push(slab);
         }
@@ -203,11 +218,10 @@ export class SlabSet {
             if (!status.run) return; // necessary in case we exceed our max inflight memoemissions and need to pause
 
             let number = Math.random();//this.slabs.length);
-            if (number < this.chattyness ) {
+            if ( number < this.chattyness ) {
                 var memo = new Memo( slab, slab.color.clone() );
 
-                other_slab = slab.select_peer();
-                if (other_slab) {
+                for (let other_slab of slab.select_peers(5) ){
                     //last_memo_time.setX(slab.id, time);
                     this.memoemissionset.send_memo(slab, other_slab,time, memo);
                 }

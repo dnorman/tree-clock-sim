@@ -17,7 +17,7 @@ var slabset;
 var frame = 0;
 var status = {
     run: true,
-    Slabs: 10.0,
+    Slabs: 3.0,
     Neighbors: 5,
     Chattyness: 0.01,
     "3D": false,
@@ -67,7 +67,7 @@ function init() {
     var gui = new dat.GUI();
 
     gui.add(status,'run');
-    gui.add(status, 'Slabs', 10, 5000).onChange(function(){
+    gui.add(status, 'Slabs', 2, 5000).onChange(function(){
         console.log('CHANGE');
         init_slabs();
     });

@@ -2,7 +2,7 @@ import {Memo, MemoHead, MemoEmission, MemoEmissionSet} from './memo'
 import * as THREE from "three";
 import {BufferGeometry, Scene, Camera, Color, Points, Float32BufferAttribute, Raycaster} from "three";
 import * as DiscImage from './textures/sprites/disc.png';
-
+import * as shader from './shader';
 
 // TODO: calculate the mean clock reading comparison time for each slab in the system
 // How?
@@ -21,6 +21,7 @@ import * as DiscImage from './textures/sprites/disc.png';
 // QUESTION: in all of the above cases, how do we select the comparator? Seems quite unfair to actually select one at random.
 // (though "warp" comparator selection is something that might be interesting plot as a point of comparison)
 // INITIAL ANSWER: best to have a radius selector, where the comparator point is selected from within that radius
+// still may need "warp" option to select comparator immediately, or delay comparator availability for light travel time
 
 // PLOT idea: comparator selection radius versus convergence time versus convergence recency ( 3d plot )
 
@@ -117,6 +118,7 @@ class SlabUniforms{
     time: Object;
     color: Object;
     texture: Object;
+    is_slab: true;
     constructor() {
         {
             var sprite = new THREE.TextureLoader().load( DiscImage );
@@ -131,7 +133,7 @@ class SlabUniforms{
 export class SlabSet {
     slabs: Array<Slab>;
     geometry: BufferGeometry;
-    uniforms: SlabUniforms;
+    uniforms: any;
     points: Points;
     memoemissionset: MemoEmissionSet;
     raycaster: Raycaster;
@@ -144,15 +146,45 @@ export class SlabSet {
         this.geometry.addAttribute( 'last_memo_time', new THREE.Float32BufferAttribute( new Float32Array( slab_count * 1), 1 ) );
 
         this.status = status;
-        this.uniforms = new SlabUniforms();
+
+        //var sprite = new THREE.TextureLoader().load( DiscImage );
+        // this.uniforms = THREE.UniformsUtils.merge([
+        //     THREE.UniformsLib[ "fog" ],
+        //     //new SlabUniforms(),
+        //     {
+        //
+        //         time: { value: 0 },
+        //         color: { value: new THREE.Color( 0x00ffff ) },
+        //         texture: { value: sprite }
+        //     }
+        // ]);
+
+        var sprite = new THREE.TextureLoader().load( DiscImage );
+        //
+        this.uniforms = {
+
+            time: { value: 0 },
+            color: { value: new THREE.Color( 0x00ffff ) },
+            texture: { value: sprite },
+
+            fogColor: { value: new THREE.Color( 0x000000 ) },
+            fogDensity: { value: 0.00025 },
+            fogFar: {value: 3000 },
+            fogNear: { value: 1 },
+        };
+
+        //debugger;
+        //this.uniforms = new SlabUniforms();
+
         this.slabs = [];
         this.chattyness = 0.01;
 
         var material = new THREE.ShaderMaterial( {
             uniforms: this.uniforms,
-            vertexShader: document.getElementById( 'slab_vertexshader' ).textContent,
-            fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
-            alphaTest: 0.5
+            vertexShader: shader.slab_vertex,
+            fragmentShader: shader.slab_fragment,
+            alphaTest: 0.5,
+            fog: true,
         } );
 
         this.raycaster = new THREE.Raycaster();
@@ -211,8 +243,8 @@ export class SlabSet {
         //     // color.toArray( colors, slab.id * 3 );
         // }
 
-        var uniforms : any = this.uniforms;
-        uniforms.time.value = time;
+        //var uniforms : any = this.uniforms;
+        this.uniforms.time.value = time;
 
         //if (time % 10 == 0) {
             this.send_memos(time);

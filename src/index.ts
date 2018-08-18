@@ -35,7 +35,7 @@ function init() {
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 2, 4000 );
     camera.position.z = 2000;
     scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2( 0x000000, 0.01 );
+    scene.fog = new THREE.FogExp2( 0x000000, 0.0004 );
 
     mouse = new THREE.Vector2();
     renderer = new THREE.WebGLRenderer();

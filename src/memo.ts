@@ -2,6 +2,7 @@ import {Slab} from './slab'
 import {BufferGeometry, Float32BufferAttribute, Points, Scene, Vector3} from "three";
 import * as THREE from "three";
 import * as DiscImage from './textures/sprites/disc.png';
+import * as shader from './shader';
 
 // Reading = Array<Memo>
 // Memo = SlabID+Increment, Array<Memo>
@@ -88,6 +89,7 @@ class MemoEmissionUniforms{
     time: Object;
     color: Object;
     texture: Object;
+    is_memo: true;
     constructor() {
         {
             var sprite = new THREE.TextureLoader().load( DiscImage );
@@ -104,7 +106,7 @@ export class MemoEmissionSet {
     emission_free_slots: Array<number>;
     max_allocated_index: number;
     geometry: BufferGeometry;
-    uniforms: MemoEmissionUniforms;
+    uniforms: any;
     points: Points;
     pool_size: number;
     status: Object;
@@ -146,14 +148,26 @@ export class MemoEmissionSet {
         this.durationAttribute.setDynamic(true);
         this.geometry.addAttribute('duration', this.durationAttribute );
 
-        this.uniforms = new MemoEmissionUniforms();
+        var sprite = new THREE.TextureLoader().load( DiscImage );
+        this.uniforms = {
+
+            time: { value: 0 },
+            color: { value: new THREE.Color( 0x00ffff ) },
+            texture: { value: sprite },
+
+            fogColor: { value: new THREE.Color( 0x000000 ) },
+            fogDensity: { value: 0.00025 },
+            fogFar: {value: 3000 },
+            fogNear: { value: 1 },
+        };;
         this.emissions = [];
 
         var material = new THREE.ShaderMaterial({
             uniforms: this.uniforms,
-            vertexShader: document.getElementById('memo_vertexshader').textContent,
-            fragmentShader: document.getElementById('memo_fragmentshader').textContent,
-            alphaTest: 0.5
+            vertexShader: shader.memo_vertex,
+            fragmentShader: shader.memo_fragment,
+            alphaTest: 0.5,
+            fog: true,
         });
 
         this.points = new THREE.Points(this.geometry, material);
@@ -219,8 +233,8 @@ export class MemoEmissionSet {
                 this.deallocate(memo.index);
             }
         }
-        var uniforms: any = this.uniforms;
-        uniforms.time.value = time;
+        // var uniforms: any = this.uniforms;
+        this.uniforms.time.value = time;
     }
     reset_all_colors(){
         var emission,memo;

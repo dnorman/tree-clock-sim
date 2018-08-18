@@ -14,12 +14,16 @@ let speed = 5.0;
 export class Memo {
     slab_id: number;
     increment: number;
+    public kind: string;
     public parents: MemoHead;
+    public payload: object;
     public color: THREE.Color;
-    constructor(slab: Slab, color: THREE.Color){
+    constructor(kind: string, payload: object, parents: MemoHead, slab: Slab, color: THREE.Color){
+        this.id = slab.id + '-' + slab.gen_memo_increment();
+        this.kind = kind;
+        this.payload = payload;
+        this.parents = parents;
         this.slab_id = slab.id;
-        this.increment = slab.get_increment();
-        this.parents = slab.clockstate;
         this.color = color;
     }
     descends(memo: Memo){

@@ -29,6 +29,37 @@ import * as shader from './shader';
 
 // * Could do a time accelerated simulation (not accurate due to changes of hosting status while requests inflight)_
 
+public type SlabId = number;
+public type MemoId = String;
+public class MemoRef{
+    memo_id:        MemoId;
+    //subject_id:     SubjectId;
+    public owning_slab_id: SlabId;
+}
+
+public class SlabRef {
+    owning_slab_id: SlabId;
+    public slab_id: SlabId;
+}
+
+public class MemoPeerState {
+    public slabref: SlabRef;
+    public status: MemoPeerStatus;
+}
+
+public type MemoPeerStatus = String;
+
+public class MemoPeerSet{
+    public list: Array<MemoPeerState>;
+}
+
+public class MemoCarrier{
+    memoref:  MemoRef;
+    memo:     Memo | null;
+    peerset:  MemoPeerSet;
+}
+
+
 export class Slab {
     id: number;
     public x: number;
@@ -36,14 +67,19 @@ export class Slab {
     public z: number;
     public color: Color;
     neighbors: Array<[number,Slab]>;
-    beacon_increment: number;
+    memo_increment: number;
     clockstate: MemoHead;
     slabset: SlabSet;
+
+    slab_presence_storage: Array<(SlabId, SlabPresence)>;
+    memo_storage: Array<(MemoId,MemoCarrier)>;
+
     constructor(slabset: SlabSet, id: number, threedim: boolean, seed: MemoHead){
         this.id = id;
 
         this.clockstate = seed;
-        this.beacon_increment = 0;
+        this.memo_increment = 0;
+        this.memo_storage = [];
         this.x = 2000 * Math.random() - 1000;
         this.y = 2000 * Math.random() - 1000;
         if (threedim) {
@@ -58,11 +94,11 @@ export class Slab {
     init_new_system(){
         this.clockstate = new MemoHead([]);
         var color = new THREE.Color(0xffffff);
-        var memo = new Memo(this, color);
+        var memo = new Memo('tick', {}, new MemoHead([]), this, color);
         this.clockstate = new MemoHead([memo]);
     }
-    get_increment() {
-        return this.beacon_increment++;
+    gen_memo_increment() {
+        return this.memo_increment++;
     }
     select_peers(count){
         count = Math.min(count, this.neighbors.length);
@@ -75,11 +111,9 @@ export class Slab {
         let from_slab_id = memoemission.from_slab.id;
         let neighbor_index = this.neighbors.findIndex( n => n[1].id == from_slab_id );
         if (neighbor_index > -1){
-            let ex = this.neighbors.splice(neighbor_index, 1)[0];
-            ex[0]++;
-            this.neighbors.unshift(ex);
+            this.neighbors[neighbor_index][0]++;
         }else{
-            this.neighbors.unshift([1,memoemission.from_slab]);
+            this.neighbors.push([1,memoemission.from_slab]);
         }
 
         this.neighbors = this.neighbors.sort((a, b) => b[0] - a[0]);
@@ -91,10 +125,18 @@ export class Slab {
 
         this.clockstate = this.clockstate.apply(new_memo);
 
-        this.color.multiply( new_memo.color )
+        this.color.multiply( new_memo.color );
         var customColor = <Float32BufferAttribute> this.slabset.geometry.getAttribute('customColor');
         customColor.setXYZ(this.id, this.color.r, this.color.g, this.color.b);
         customColor.needsUpdate = true;
+    }
+
+    local_tick (time){
+        var memo = new Memo('tick', {}, this.clockstate, this, this.color.clone() );
+
+        for (let other_slab of this.select_peers(5) ){
+            this.slabset.memoemissionset.send_memo(this, other_slab,time, memo);
+        }
     }
     choose_random_neighbors(count: number){
         this.neighbors = [];
@@ -139,6 +181,7 @@ export class SlabSet {
     raycaster: Raycaster;
     chattyness: number;
     status: Object;
+    last_time: number;
     constructor(scene: Scene, slab_count: number, status: Object){
         this.geometry = new THREE.BufferGeometry();
         this.geometry.addAttribute( 'position',    new THREE.Float32BufferAttribute( new Float32Array(slab_count * 3), 3 ) );
@@ -146,6 +189,7 @@ export class SlabSet {
         this.geometry.addAttribute( 'last_memo_time', new THREE.Float32BufferAttribute( new Float32Array( slab_count * 1), 1 ) );
 
         this.status = status;
+        this.last_time = 0;
 
         //var sprite = new THREE.TextureLoader().load( DiscImage );
         // this.uniforms = THREE.UniformsUtils.merge([
@@ -251,6 +295,7 @@ export class SlabSet {
         //}
 
         this.memoemissionset.update(time);
+        this.last_time = time;
     }
     randomize_all_neighbors(count: number){
         for (let slab of this.slabs) {
@@ -268,20 +313,16 @@ export class SlabSet {
     }
     send_memos(time){
 
+        let diff = time - this.last_time;
         var last_memo_time = <Float32BufferAttribute> this.geometry.getAttribute('last_memo_time');
         var other_slab;
         var status : any = this.status;
         for (let slab of this.slabs){
             if (!status.Run) return; // necessary in case we exceed our max inflight memoemissions and need to pause
 
-            let number = Math.random();//this.slabs.length);
+            let number = Math.random() / diff;//this.slabs.length);
             if ( number < this.chattyness ) {
-                var memo = new Memo( slab, slab.color.clone() );
-
-                for (let other_slab of slab.select_peers(5) ){
-                    //last_memo_time.setX(slab.id, time);
-                    this.memoemissionset.send_memo(slab, other_slab,time, memo);
-                }
+                slab.local_tick(this.memoemissionset, time);
             }
         }
         //last_memo_time.needsUpdate = true;

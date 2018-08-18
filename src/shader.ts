@@ -47,7 +47,7 @@ export const memo_vertex = `
         vColor = vec4(customColor, step(time, emit_time + duration)  );
         vec4 mvPosition = modelViewMatrix * vec4( mix(position, destination, progress), 1.0 );
     
-        gl_PointSize = 50.0 * ( 300.0 / -mvPosition.z );
+        gl_PointSize = 25.0 * ( 300.0 / -mvPosition.z );
     
         gl_Position = projectionMatrix * mvPosition;
         

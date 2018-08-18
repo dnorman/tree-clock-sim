@@ -17,9 +17,9 @@ var slabset;
 var frame = 0;
 var status = {
     run: true,
-    Slabs: 3.0,
-    Neighbors: 5,
-    Chattyness: 0.01,
+    Slabs: 200.0,
+    Neighbors: 8,
+    Chattyness: 0.02,
     "3D": false,
     Dropper: function(){},
     "RandNeighbor": function(){},
@@ -36,6 +36,8 @@ function init() {
     camera.position.z = 2000;
     scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2( 0x000000, 0.0004 );
+    scene.fog.near = 1000;
+    scene.fog.far = 4000;
 
     mouse = new THREE.Vector2();
     renderer = new THREE.WebGLRenderer();

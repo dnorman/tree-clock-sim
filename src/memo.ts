@@ -157,7 +157,7 @@ export class MemoEmissionSet {
 
             fogColor: { value: new THREE.Color( 0x000000 ) },
             fogDensity: { value: 0.00025 },
-            fogFar: {value: 3000 },
+            fogFar: {value: 2000 },
             fogNear: { value: 1 },
         };;
         this.emissions = [];

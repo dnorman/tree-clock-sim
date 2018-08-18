@@ -14,9 +14,11 @@ var windowHalfX = window.innerWidth / 2;
 var windowHalfY = window.innerHeight / 2;
 
 var slabset;
-var frame = 0;
+var frame = -1;
+var time = -1;
 var status = {
-    run: true,
+    Run: true,
+    Speed: 1,
     Slabs: 200.0,
     Neighbors: 8,
     Chattyness: 0.02,
@@ -33,7 +35,7 @@ init();
 animate();
 function init() {
     camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 2, 4000 );
-    camera.position.z = 2000;
+    camera.position.z = 1500;
     scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2( 0x000000, 0.0004 );
     scene.fog.near = 1000;
@@ -68,7 +70,8 @@ function init() {
 
     var gui = new dat.GUI();
 
-    gui.add(status,'run');
+    gui.add(status,'Run');
+    gui.add(status,'Speed',0,5);
     gui.add(status, 'Slabs', 2, 5000).onChange(function(){
         console.log('CHANGE');
         init_slabs();
@@ -155,16 +158,15 @@ function animate() {
 
 function render() {
 
+    frame++;
     camera.lookAt( scene.position );
 
-    if (status.run){
-        slabset.update(frame);
+    if (status.Run){
+        time += status.Speed;
+        slabset.update(time);
     }
 
     trackBallControls.update();
     renderer.render( scene, camera );
 
-    if (status.run) {
-        frame++;
-    }
 }

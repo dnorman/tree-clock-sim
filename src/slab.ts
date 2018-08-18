@@ -164,7 +164,7 @@ export class SlabSet {
         this.uniforms = {
 
             time: { value: 0 },
-            color: { value: new THREE.Color( 0x00ffff ) },
+            color: { value: new THREE.Color( 0xffffff ) },
             texture: { value: sprite },
 
             fogColor: { value: new THREE.Color( 0x000000 ) },
@@ -272,7 +272,7 @@ export class SlabSet {
         var other_slab;
         var status : any = this.status;
         for (let slab of this.slabs){
-            if (!status.run) return; // necessary in case we exceed our max inflight memoemissions and need to pause
+            if (!status.Run) return; // necessary in case we exceed our max inflight memoemissions and need to pause
 
             let number = Math.random();//this.slabs.length);
             if ( number < this.chattyness ) {

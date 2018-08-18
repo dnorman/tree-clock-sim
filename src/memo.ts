@@ -152,7 +152,7 @@ export class MemoEmissionSet {
         this.uniforms = {
 
             time: { value: 0 },
-            color: { value: new THREE.Color( 0x00ffff ) },
+            color: { value: new THREE.Color( 0xffffff ) },
             texture: { value: sprite },
 
             fogColor: { value: new THREE.Color( 0x000000 ) },
@@ -260,7 +260,7 @@ export class MemoEmissionSet {
 
         if (typeof index == 'undefined'){
             var status : any = this.status;
-            status.run = false;
+            status.Run = false;
             alert("Exceeded maximum memo inflight buffer size");
             return;
         }

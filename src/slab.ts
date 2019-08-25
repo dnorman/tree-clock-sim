@@ -4,6 +4,7 @@ import {BufferGeometry, Scene, Camera, Color, Points, Float32BufferAttribute, Ra
 import * as DiscImage from './textures/sprites/disc.png';
 import * as shader from './shader';
 
+
 // TODO: calculate the mean clock reading comparison time for each slab in the system
 // How?
 // * Could do it through sampling and actually doing the comparison.

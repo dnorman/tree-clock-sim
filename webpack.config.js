@@ -11,7 +11,7 @@ const BrowserSyncPlugin = require('browser-sync-webpack-plugin')
 const BrowserSyncPluginConfig = new BrowserSyncPlugin({
     host: 'localhost',
     port: 3000,
-    proxy: 'http://localhost:8080/'
+    // proxy: 'http://localhost:8080/'
 }, config = {
     reload: false
 })
@@ -41,10 +41,7 @@ module.exports = {
                 exclude: /[\/\\]src[\/\\]/,
                 use: [
                     {
-                        loader: 'style-loader',
-                        options: {
-                            sourceMap: true
-                        }
+                        loader: 'style-loader'
                     },
                     {loader: 'css-loader'}
                 ]
@@ -54,16 +51,12 @@ module.exports = {
                 use: [
                     {
                         loader: 'style-loader',
-                        options: {
-                            sourceMap: true
-                        }
                     },
                     {
                         loader: 'css-loader',
                         options: {
                             modules: true,
-                            importLoaders: 1,
-                            localIdentName: '[path]___[name]__[local]___[hash:base64:5]'
+                            importLoaders: 1
                         }
                     }
                 ]

@@ -1,5 +1,5 @@
 {
-  "name": "three-typescript-starter",
+  "name": "tree-clock-sim",
   "version": "1.0.0",
   "description": "three.js + typescript",
   "main": "index.js",
@@ -12,7 +12,7 @@
     "url": "git+https://github.com/pinqy520/three-typescript-starter.git"
   },
   "keywords": [],
-  "author": "Huang Qi",
+  "author": "Daniel Norman",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/pinqy520/three-typescript-starter/issues"
@@ -20,27 +20,27 @@
   "homepage": "https://github.com/pinqy520/three-typescript-starter#readme",
   "devDependencies": {
     "awesome-typescript-loader": "latest",
-    "browser-sync": "latest",
+    "browser-sync": "^2.26.7",
     "browser-sync-webpack-plugin": "latest",
     "css-loader": "latest",
-    "extract-text-webpack-plugin": "latest",
+    "file-loader": "latest",
     "html-webpack-plugin": "latest",
     "json-loader": "latest",
-    "file-loader": "latest",
+    "mini-css-extract-plugin": "^0.8.0",
     "progress-bar-webpack-plugin": "latest",
     "style-loader": "latest",
     "typescript": "latest",
     "webpack": "^4.9.1",
-    "webpack-cli": "^2.0.14",
+    "webpack-cli": "^3.3.7",
     "webpack-dev-server": "latest"
   },
   "dependencies": {
     "@types/three": "latest",
     "dat.gui": "latest",
-    "npm": "^6.1.0",
+    "npm": "^6.11.2",
     "stats.js": "latest",
-    "three": "latest",
+    "three": "^0.107.0",
     "three-dragcontrols": "^0.88.2",
-    "three-trackballcontrols": "0.0.7"
+    "three-trackballcontrols": "0.0.8"
   }
 }

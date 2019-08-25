@@ -1,3 +1,6 @@
+#Editor cruft
+*.iml
+
 # Logs
 logs
 *.log

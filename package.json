@@ -37,7 +37,7 @@
   "dependencies": {
     "@types/three": "latest",
     "dat.gui": "latest",
-    "npm": "^6.11.2",
+    "npm": "^6.14.6",
     "stats.js": "latest",
     "three": "^0.107.0",
     "three-dragcontrols": "^0.88.2",

@@ -39,7 +39,7 @@
     "dat.gui": "latest",
     "npm": "^6.11.2",
     "stats.js": "latest",
-    "three": "^0.107.0",
+    "three": "^0.137.0",
     "three-dragcontrols": "^0.88.2",
     "three-trackballcontrols": "0.0.8"
   }
